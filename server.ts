@@ -10,14 +10,14 @@ const server = process.env.XRPL_SERVER || 'wss://s.altnet.rippletest.net';
 const xrpl_address = process.env.XRPL_ADDRESS || 'rpzR63sAd7fc4tR9c8k6MR3xhcZSpTAYKm';
 const xrpl_secret = process.env.XRPL_SECRET || 'sskorjvv5bPtydsm5HtU1f2YxxA6D';
 
-const api:RippleAPI = new RippleAPI({server: server, proxy: "http://proxy:81"});
+const api:RippleAPI = new RippleAPI({server: server});
 initEscrowExecuter();
 
 async function initEscrowExecuter() {
     let allEscrows:any[] = escrowInfos.escrows;
     allEscrows.forEach(escrow => {
         let executionDate:Date = new Date(escrow.executeAfter);
-        executionDate.setSeconds(executionDate.getSeconds()-1);
+        executionDate.setSeconds(executionDate.getSeconds()-2);
 
         let scheduleDate:Date = new Date(escrow.executeAfter);
         scheduleDate.setMinutes(scheduleDate.getMinutes()-1);
@@ -29,7 +29,7 @@ async function initEscrowExecuter() {
     });
 }
 
-async function preparingEscrowFinishTrx(executionDate:Date, escrowList:any[]) {
+async function preparingEscrowFinishTrx(executionDate:Date, escrowList:any[], retry?: boolean) {
     let preparedEscrowFinishTrx: Prepare[] = [];
 
     console.log("preparing escrows: " + JSON.stringify(escrowList));
@@ -49,10 +49,10 @@ async function preparingEscrowFinishTrx(executionDate:Date, escrowList:any[]) {
 
     console.log("finished preparing escrows: " + JSON.stringify(escrowList));
 
-    signingPreparedEscrowFinishTrx(executionDate, preparedEscrowFinishTrx);
+    signingPreparedEscrowFinishTrx(executionDate, preparedEscrowFinishTrx, (retry?null:escrowList));
 }
 
-async function signingPreparedEscrowFinishTrx(executionDate:Date, preparedEscrowFinishTrx:Prepare[]) {
+async function signingPreparedEscrowFinishTrx(executionDate:Date, preparedEscrowFinishTrx:Prepare[], escrowList:any[]) {
     let signedEscrowFinishTrx: any[] = [];
 
     console.log("signing escrows");
@@ -60,31 +60,31 @@ async function signingPreparedEscrowFinishTrx(executionDate:Date, preparedEscrow
         signedEscrowFinishTrx.push(await api.sign(preparedEscrowFinishTrx[i].txJSON, xrpl_secret));
     }
     console.log("finished signing escrows");
-    submitSignedEscrowFinishTrx(executionDate, signedEscrowFinishTrx);
+    submitSignedEscrowFinishTrx(executionDate, signedEscrowFinishTrx,escrowList);
 }
 
-async function submitSignedEscrowFinishTrx(executionDate:Date, signedEscrowFinishTrx:any[]) {
+async function submitSignedEscrowFinishTrx(executionDate:Date, signedEscrowFinishTrx:any[], escrowList:any[]) {
     try {
         console.log("setting scheduler to submit transaction");
         scheduler.scheduleJob(executionDate, async () => {
-            let unsuccessfullTrx:any[] = [];
             for(let i = 0; i < signedEscrowFinishTrx.length; i++) {
                 console.log("submitting escrowFinish transaction")
                 let result:FormattedSubmitResponse = await api.submit(signedEscrowFinishTrx[i].signedTransaction);
                 console.log(JSON.stringify(result));
 
-                if(!result || "tesSUCCESS" != result.resultCode)
-                    unsuccessfullTrx.push(signedEscrowFinishTrx[i]);
+                if(result && "tesSUCCESS" === result.resultCode && escrowList && escrowList[i])
+                    escrowList.splice(i,1);  
             }
 
             if(api.isConnected())
                 await api.disconnect();
 
-            if(unsuccessfullTrx && unsuccessfullTrx.length > 0) {
+            //check for not executed escrows
+            if(escrowList && escrowList.length > 0) {
                 let newExecutionDate = new Date(executionDate);
                 newExecutionDate.setSeconds(newExecutionDate.getSeconds()+10);
 
-                submitSignedEscrowFinishTrx(newExecutionDate, unsuccessfullTrx);
+                preparingEscrowFinishTrx(newExecutionDate, escrowList, true);
             }
         });
 
