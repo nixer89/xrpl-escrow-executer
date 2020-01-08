@@ -23,7 +23,7 @@ async function initEscrowExecuter() {
         scheduleDate.setMinutes(scheduleDate.getMinutes()-1);
         //only schedule future escrows!
         if(Date.now() < scheduleDate.getTime()) {
-            console.log("schedule escrow execution for: " + scheduleDate + " on accounts: " + JSON.stringify(escrow.escrowList));
+            console.log("schedule escrow execution for: " + executionDate + " on accounts: " + JSON.stringify(escrow.escrowList));
             scheduler.scheduleJob(scheduleDate, () => preparingEscrowFinishTrx(executionDate, escrow.escrowList) );
         }
     });
@@ -67,24 +67,25 @@ async function submitSignedEscrowFinishTrx(executionDate:Date, signedEscrowFinis
     try {
         console.log("setting scheduler to submit transaction");
         scheduler.scheduleJob(executionDate, async () => {
+            let unsuccessfullEscrowTrx:any[] = [];
             for(let i = 0; i < signedEscrowFinishTrx.length; i++) {
                 console.log("submitting escrowFinish transaction")
                 let result:FormattedSubmitResponse = await api.submit(signedEscrowFinishTrx[i].signedTransaction);
                 console.log(JSON.stringify(result));
 
                 if(result && "tesSUCCESS" === result.resultCode && escrowList && escrowList[i])
-                    escrowList.splice(i,1);  
+                    unsuccessfullEscrowTrx.push(escrowList[i]);
             }
 
             if(api.isConnected())
                 await api.disconnect();
 
             //check for not executed escrows
-            if(escrowList && escrowList.length > 0) {
+            if(unsuccessfullEscrowTrx && unsuccessfullEscrowTrx.length > 0) {
                 let newExecutionDate = new Date(executionDate);
-                newExecutionDate.setSeconds(newExecutionDate.getSeconds()+10);
+                newExecutionDate.setSeconds(newExecutionDate.getSeconds()+15);
 
-                preparingEscrowFinishTrx(newExecutionDate, escrowList, true);
+                preparingEscrowFinishTrx(newExecutionDate, unsuccessfullEscrowTrx, true);
             }
         });
 
