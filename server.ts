@@ -73,7 +73,7 @@ async function submitSignedEscrowFinishTrx(executionDate:Date, signedEscrowFinis
                 let result:FormattedSubmitResponse = await api.submit(signedEscrowFinishTrx[i].signedTransaction);
                 console.log(JSON.stringify(result));
 
-                if(result && "tesSUCCESS" === result.resultCode && escrowList && escrowList[i])
+                if((!result || "tesSUCCESS" != result.resultCode) && (escrowList && escrowList[i]))
                     unsuccessfullEscrowTrx.push(escrowList[i]);
             }
 
