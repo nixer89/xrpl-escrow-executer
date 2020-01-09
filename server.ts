@@ -1,7 +1,8 @@
 import * as scheduler from 'node-schedule';
 import { RippleAPI } from 'ripple-lib';
 import { EscrowExecution } from 'ripple-lib/dist/npm/transaction/escrow-execution';
-import * as escrowInfos  from './escrowList';
+import * as testEscrows  from './testEscrows';
+import * as rippleEscrows  from './rippleEscrows';
 import { Prepare } from 'ripple-lib/dist/npm/transaction/types';
 import { FormattedSubmitResponse } from 'ripple-lib/dist/npm/transaction/submit';
 require('console-stamp')(console, { pattern: 'yyyy-mm-dd HH:MM:ss' });
@@ -14,10 +15,10 @@ const api:RippleAPI = new RippleAPI({server: server});
 initEscrowExecuter();
 
 async function initEscrowExecuter() {
-    let allEscrows:any[] = escrowInfos.escrows;
+    let allEscrows:any[] = rippleEscrows.escrows;
     allEscrows.forEach(escrow => {
         let executionDate:Date = new Date(escrow.executeAfter);
-        executionDate.setSeconds(executionDate.getSeconds()-2);
+        executionDate.setSeconds(executionDate.getSeconds()+1);
 
         let scheduleDate:Date = new Date(escrow.executeAfter);
         scheduleDate.setMinutes(scheduleDate.getMinutes()-1);
@@ -37,6 +38,8 @@ async function preparingEscrowFinishTrx(executionDate:Date, escrowList:any[], re
 
     await api.connect();
     let accountSequence = (await api.getAccountInfo(xrpl_address)).sequence;
+
+    console.log("Account sequence: " + accountSequence);
     
     for(let i = 0; i < escrowList.length; i++) {
         let escrowFinish:EscrowExecution = {
@@ -44,7 +47,10 @@ async function preparingEscrowFinishTrx(executionDate:Date, escrowList:any[], re
             escrowSequence: escrowList[i].sequence
         }
 
-        preparedEscrowFinishTrx.push(await api.prepareEscrowExecution(xrpl_address, escrowFinish, {sequence: accountSequence++, maxLedgerVersionOffset: 100 }));
+        console.log("preparing escrow with account sequence: " + accountSequence);
+        preparedEscrowFinishTrx.push(await api.prepareEscrowExecution(xrpl_address, escrowFinish, {sequence: accountSequence, maxLedgerVersionOffset: 100 }));
+        accountSequence++;
+
     }
 
     console.log("finished preparing escrows: " + JSON.stringify(escrowList));
@@ -67,26 +73,46 @@ async function submitSignedEscrowFinishTrx(executionDate:Date, signedEscrowFinis
     try {
         console.log("setting scheduler to submit transaction");
         scheduler.scheduleJob(executionDate, async () => {
-            let unsuccessfullEscrowTrx:any[] = [];
+            let trxHashes:string[] = [];
+            let possibleUnsuccessfullEscrows:any[] = [];
             for(let i = 0; i < signedEscrowFinishTrx.length; i++) {
                 console.log("submitting escrowFinish transaction")
                 let result:FormattedSubmitResponse = await api.submit(signedEscrowFinishTrx[i].signedTransaction);
-                console.log(JSON.stringify(result));
-
-                if((!result || "tesSUCCESS" != result.resultCode) && (escrowList && escrowList[i]))
-                    unsuccessfullEscrowTrx.push(escrowList[i]);
+                if((!result || "tesSUCCESS" != result.resultCode) && (escrowList && escrowList[i])) {
+                    trxHashes.push(result['tx_json'].hash);
+                    possibleUnsuccessfullEscrows.push(escrowList[i]);
+                }
             }
 
-            if(api.isConnected())
-                await api.disconnect();
+            setTimeout(async () => {
+                let unsuccessfullEscrowTrx:any[] = [];
+                if(trxHashes.length > 0) {
+                    console.log("checking transactions: " + JSON.stringify(trxHashes));
+                    for(let i = 0; i < trxHashes.length; i++) {
+                        try {
+                        let trx = await api.getTransaction(trxHashes[i], {includeRawTransaction: false});
+                        console.log("final restult: " + JSON.stringify(trx.outcome));
+                        if((!trx || (trx.outcome && "tesSUCCESS" != trx.outcome.result && "tecNO_TARGET" != trx.outcome.result)) && (possibleUnsuccessfullEscrows && possibleUnsuccessfullEscrows[i]))
+                            unsuccessfullEscrowTrx.push(possibleUnsuccessfullEscrows[i]);
+                        } catch(err) {
+                            console.log("ups, something went wrong with trx: " + trxHashes[i]);
+                        }
+                    }
+                } else {
+                    console.log("everything submitted successfully");
+                }
 
-            //check for not executed escrows
-            if(unsuccessfullEscrowTrx && unsuccessfullEscrowTrx.length > 0) {
-                let newExecutionDate = new Date(executionDate);
-                newExecutionDate.setSeconds(newExecutionDate.getSeconds()+15);
+                if(api.isConnected())
+                    await api.disconnect();
 
-                preparingEscrowFinishTrx(newExecutionDate, unsuccessfullEscrowTrx, true);
-            }
+                //check for not executed escrows
+                if(unsuccessfullEscrowTrx && unsuccessfullEscrowTrx.length > 0) {
+                    let newExecutionDate = new Date(executionDate);
+                    newExecutionDate.setSeconds(newExecutionDate.getSeconds()+20);
+
+                    setTimeout(() => preparingEscrowFinishTrx(newExecutionDate, unsuccessfullEscrowTrx, true), 1000);
+                }
+            }, 4000)
         });
 
     } catch(err) {
