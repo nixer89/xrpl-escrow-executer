@@ -1,27 +1,27 @@
 export const escrows:any = [
         {
-            executeAfter: "2020-01-09 12:18:00",
+            executeAfter: "2020-01-09 15:35:00",
             escrowList: [
                 {
                     account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 34
+                    sequence: 50
                 },
                 {
                     account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 35
+                    sequence: 51
                 },
                 {
                     account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 33
+                    sequence: 52
                 },
             ]
         },
         {
-            executeAfter: "2020-01-09 12:20:00",
+            executeAfter: "2020-01-09 15:40:00",
             escrowList: [
                 {
                     account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 36
+                    sequence: 54
                 },
                 {
                     account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
@@ -29,46 +29,22 @@ export const escrows:any = [
                 },
                 {
                     account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 37
+                    sequence: 53
                 },
             ]
         },
         {
-            executeAfter: "2020-01-09 12:25:00",
+            executeAfter: "2020-01-09 15:45:00",
             escrowList: [
                 {
                     account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 38
+                    sequence: 55
                 },
                 {
                     account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 39
+                    sequence: 56
                 },
             ]
         },
-        {
-            executeAfter: "2020-01-09 12:30:00",
-            escrowList: [
-                {
-                    account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 40
-                },
-                {
-                    account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 17
-                },
-                {
-                    account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 42
-                },
-                {
-                    account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 19
-                },
-                {
-                    account: "raFmsbQkKbEoXGgUe18WgtubS3GPLczHtx",
-                    sequence: 41
-                },
-            ]
-        },
+
     ]

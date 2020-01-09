@@ -1,6 +1,6 @@
 {
   "name": "xrpl-escrow-executer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "executes XRPL timelocked escrows based on a list of escrows",
   "main": "server.ts",
   "scripts": {

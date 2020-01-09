@@ -112,7 +112,7 @@ async function submitSignedEscrowFinishTrx(executionDate:Date, signedEscrowFinis
 
                     setTimeout(() => preparingEscrowFinishTrx(newExecutionDate, unsuccessfullEscrowTrx, true), 1000);
                 }
-            }, 4000)
+            }, 5000)
         });
 
     } catch(err) {
