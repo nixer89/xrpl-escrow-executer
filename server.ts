@@ -3,7 +3,7 @@ import { RippleAPI } from 'ripple-lib';
 import { EscrowExecution } from 'ripple-lib/dist/npm/transaction/escrow-execution';
 import * as testEscrows  from './testEscrows';
 import * as rippleEscrows  from './rippleEscrows';
-import { Prepare } from 'ripple-lib/dist/npm/transaction/types';
+import { Prepare, FormattedTransactionType } from 'ripple-lib/dist/npm/transaction/types';
 import { FormattedSubmitResponse } from 'ripple-lib/dist/npm/transaction/submit';
 require('console-stamp')(console, { pattern: 'yyyy-mm-dd HH:MM:ss' });
 
@@ -18,7 +18,7 @@ async function initEscrowExecuter() {
     let allEscrows:any[] = rippleEscrows.escrows;
     allEscrows.forEach(escrow => {
         let executionDate:Date = new Date(escrow.executeAfter);
-        executionDate.setSeconds(executionDate.getSeconds()+1);
+        executionDate.setSeconds(executionDate.getSeconds()+4);
 
         let scheduleDate:Date = new Date(escrow.executeAfter);
         scheduleDate.setMinutes(scheduleDate.getMinutes()-1);
@@ -90,10 +90,12 @@ async function submitSignedEscrowFinishTrx(executionDate:Date, signedEscrowFinis
                     console.log("checking transactions: " + JSON.stringify(trxHashes));
                     for(let i = 0; i < trxHashes.length; i++) {
                         try {
-                        let trx = await api.getTransaction(trxHashes[i], {includeRawTransaction: false});
-                        console.log("final restult: " + JSON.stringify(trx.outcome));
-                        if((!trx || (trx.outcome && "tesSUCCESS" != trx.outcome.result && "tecNO_TARGET" != trx.outcome.result)) && (possibleUnsuccessfullEscrows && possibleUnsuccessfullEscrows[i]))
-                            unsuccessfullEscrowTrx.push(possibleUnsuccessfullEscrows[i]);
+                            let trx:FormattedTransactionType = await api.getTransaction(trxHashes[i]);
+                            if(trx)
+                                console.log("final restult: " + JSON.stringify(trx.outcome));
+
+                            if((!trx || (trx.outcome && "tesSUCCESS" != trx.outcome.result && "tecNO_TARGET" != trx.outcome.result)) && (possibleUnsuccessfullEscrows && possibleUnsuccessfullEscrows[i]))
+                                unsuccessfullEscrowTrx.push(possibleUnsuccessfullEscrows[i]);
                         } catch(err) {
                             console.log("ups, something went wrong with trx: " + trxHashes[i]);
                         }
@@ -108,11 +110,11 @@ async function submitSignedEscrowFinishTrx(executionDate:Date, signedEscrowFinis
                 //check for not executed escrows
                 if(unsuccessfullEscrowTrx && unsuccessfullEscrowTrx.length > 0) {
                     let newExecutionDate = new Date(executionDate);
-                    newExecutionDate.setSeconds(newExecutionDate.getSeconds()+20);
+                    newExecutionDate.setSeconds(newExecutionDate.getSeconds()+12);
 
-                    setTimeout(() => preparingEscrowFinishTrx(newExecutionDate, unsuccessfullEscrowTrx, true), 1000);
+                    setTimeout(() => preparingEscrowFinishTrx(newExecutionDate, unsuccessfullEscrowTrx, true), 0);
                 }
-            }, 5000)
+            }, 4000)
         });
 
     } catch(err) {
